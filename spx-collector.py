@@ -57,11 +57,11 @@ def mudar_secret_ambiente_github(
             f"⚠️ Ignorando atualização de '{secret_name}' "
             "porque o valor extraído está vazio."
         )
-        return
+        return False
 
     if not token:
         print("❌ GITHUB_PAT não foi informado.")
-        return
+        return False
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -156,6 +156,8 @@ def mudar_secret_ambiente_github(
                 f"com sucesso no ambiente '{environment}'!"
             )
 
+            return True
+
         else:
 
             print(
@@ -164,6 +166,8 @@ def mudar_secret_ambiente_github(
                 f"{put_response.status_code} - "
                 f"{put_response.text}"
             )
+
+            return False
 
     except requests.exceptions.HTTPError as api_err:
 
@@ -179,6 +183,8 @@ def mudar_secret_ambiente_github(
                 f"{key_response.text}"
             )
 
+        return False
+
     except requests.exceptions.RequestException as api_err:
 
         print(
@@ -187,6 +193,8 @@ def mudar_secret_ambiente_github(
             f"{api_err}"
         )
 
+        return False
+
     except Exception as api_err:
 
         print(
@@ -194,6 +202,50 @@ def mudar_secret_ambiente_github(
             f"'{secret_name}': "
             f"{api_err}"
         )
+
+        return False
+
+
+# ============================================================
+# FUNÇÃO PARA ENVIAR MENSAGEM AO SEATALK
+# ============================================================
+
+def enviar_seatalk(mensagem: str, webhook: str) -> bool:
+
+    if not webhook:
+        print("⚠️ SEATALK_WEBHOOK não foi informado.")
+        return False
+
+    payload = {
+        "tag": "text",
+        "text": {
+            "content": mensagem
+        }
+    }
+
+    try:
+        response = requests.post(
+            webhook,
+            json=payload,
+            timeout=30
+        )
+
+        if response.ok:
+            print("✅ Mensagem enviada para o SeaTalk.")
+            return True
+
+        print(
+            f"❌ Erro ao enviar mensagem para o SeaTalk: "
+            f"{response.status_code} - {response.text}"
+        )
+        return False
+
+    except requests.exceptions.RequestException as seatalk_error:
+        print(
+            f"❌ Erro de comunicação com o SeaTalk: "
+            f"{seatalk_error}"
+        )
+        return False
 
 
 # ============================================================
@@ -276,6 +328,11 @@ try:
 
     GITHUB_PAT = os.environ.get(
         "GITHUB_PAT",
+        ""
+    )
+
+    SEATALK_WEBHOOK = os.environ.get(
+        "SEATALK_WEBHOOK",
         ""
     )
 
@@ -467,7 +524,7 @@ try:
     )
 
 
-    mudar_secret_ambiente_github(
+    spx_uk_atualizado = mudar_secret_ambiente_github(
 
         owner="jonathandamasceno",
 
@@ -487,7 +544,7 @@ try:
     # 11. ATUALIZAR SPX_UID NO GITHUB
     # ========================================================
 
-    mudar_secret_ambiente_github(
+    spx_uid_atualizado = mudar_secret_ambiente_github(
 
         owner="jonathandamasceno",
 
@@ -507,8 +564,28 @@ try:
     # FINAL
     # ========================================================
 
+    processo_concluido = (
+        spx_uid_atualizado
+        and spx_uk_atualizado
+    )
+
+    msg = (
+        "🍪 ATUALIZAÇÃO DOS COOKIES SPX\n\n"
+        f"SPX_UID: {'✅ Encontrado' if spx_uid_value else '❌ Não encontrado'}\n"
+        f"SPX_UK: {'✅ Encontrado' if spx_uk_value else '❌ Não encontrado'}\n\n"
+        "ATUALIZAÇÃO NO GITHUB\n\n"
+        f"SPX_UID: {'✅ Atualizado' if spx_uid_atualizado else '❌ Falhou'}\n"
+        f"SPX_UK: {'✅ Atualizado' if spx_uk_atualizado else '❌ Falhou'}\n\n"
+        f"RESULTADO: {'✅ PROCESSO CONCLUÍDO' if processo_concluido else '❌ PROCESSO COM ERRO'}"
+    )
+
     print(
-        "\n✅ Processo concluído."
+        "\n" + msg
+    )
+
+    enviar_seatalk(
+        msg,
+        SEATALK_WEBHOOK
     )
 
 
@@ -520,6 +597,14 @@ except Exception as e:
 
     print(
         f"   {str(e)}"
+    )
+
+
+    enviar_seatalk(
+        "🚨 ERRO NA AUTOMAÇÃO SPX\n\n"
+        f"❌ {str(e)}\n\n"
+        "Resultado: ❌ PROCESSO NÃO CONCLUÍDO",
+        os.environ.get("SEATALK_WEBHOOK", "")
     )
 
 
