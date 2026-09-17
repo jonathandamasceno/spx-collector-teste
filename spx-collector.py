@@ -392,7 +392,7 @@ try:
     # ========================================================
     # 5. ENVIAR LOGIN
     # ========================================================
-
+    time.sleep(5)
     print("🔘 Procurando botão de login...")
 
     botao_login = wait.until(
@@ -417,7 +417,7 @@ try:
         "⏳ Aguardando conclusão do login..."
     )
 
-    time.sleep(5)
+    time.sleep(15)
 
 
     # ========================================================
