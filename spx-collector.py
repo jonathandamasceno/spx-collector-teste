@@ -522,6 +522,9 @@ try:
         "\n🔐 Iniciando atualização dos "
         "secrets no GitHub..."
     )
+    
+    run_id = os.environ["GITHUB_RUN_ID"]
+    print(run_id)
 
 
     spx_uk_atualizado = mudar_secret_ambiente_github(
