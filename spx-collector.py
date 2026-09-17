@@ -248,6 +248,64 @@ def enviar_seatalk(mensagem: str, webhook: str) -> bool:
         return False
 
 
+def enviar_screenshot_seatalk(driver, webhook: str) -> bool:
+
+    if not webhook:
+        print("⚠️ SEATALK_WEBHOOK não foi informado.")
+        return False
+
+    try:
+
+        screenshot_bytes = driver.get_screenshot_as_png()
+        screenshot_base64 = b64encode(
+            screenshot_bytes
+        ).decode("utf-8")
+
+        if len(screenshot_base64) > 5 * 1024 * 1024:
+            print(
+                "⚠️ Screenshot excede o limite de 5 MB "
+                "do SeaTalk."
+            )
+            return False
+
+        payload = {
+            "tag": "image",
+            "image_base64": {
+                "content": screenshot_base64
+            }
+        }
+
+        response = requests.post(
+            webhook,
+            json=payload,
+            timeout=30
+        )
+
+        if response.ok:
+            print("📸 Screenshot enviado para o SeaTalk.")
+            return True
+
+        print(
+            f"❌ Erro ao enviar screenshot para o SeaTalk: "
+            f"{response.status_code} - {response.text}"
+        )
+        return False
+
+    except requests.exceptions.RequestException as screenshot_error:
+        print(
+            f"❌ Erro de comunicação com o SeaTalk "
+            f"ao enviar screenshot: {screenshot_error}"
+        )
+        return False
+
+    except Exception as screenshot_error:
+        print(
+            f"⚠️ Não foi possível capturar/enviar "
+            f"o screenshot: {screenshot_error}"
+        )
+        return False
+
+
 # ============================================================
 # CONFIGURAÇÃO DO SELENIUM / CHROME
 # ============================================================
@@ -522,10 +580,6 @@ try:
         "\n🔐 Iniciando atualização dos "
         "secrets no GitHub..."
     )
-    
-    run_id = os.environ["GITHUB_RUN_ID"]
-    print(run_id)
-
 
     spx_uk_atualizado = mudar_secret_ambiente_github(
 
@@ -615,27 +669,10 @@ except Exception as e:
     # SCREENSHOT PARA DEBUG
     # ========================================================
 
-    try:
-
-        driver.save_screenshot(
-            "error_screenshot.png"
-        )
-
-        print(
-            "📸 Screenshot de debug salvo como "
-            "'error_screenshot.png'."
-        )
-
-    except Exception as screenshot_error:
-
-        print(
-            "⚠️ Não foi possível salvar "
-            "o screenshot:"
-        )
-
-        print(
-            screenshot_error
-        )
+    enviar_screenshot_seatalk(
+        driver,
+        os.environ.get("SEATALK_WEBHOOK", "")
+    )
 
 
 finally:
